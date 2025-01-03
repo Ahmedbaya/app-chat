@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import { Users } from "lucide-react";
 
 const Sidebar = () => {
-  const { getUsers, users = [], selectedUser, setSelectedUser, isUsersLoading } = useChatStore(); // Default `users` to an empty array
+  const { getUsers, users = [], selectedUser, setSelectedUser, isUsersLoading, error } = useChatStore(); // Default `users` to an empty array
   const { onlineUsers = [] } = useAuthStore(); // Default `onlineUsers` to an empty array
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
 
@@ -13,12 +13,14 @@ const Sidebar = () => {
     getUsers();
   }, [getUsers]);
 
-  // Filter users based on the `showOnlineOnly` state
-  const filteredUsers = showOnlineOnly
-    ? users.filter((user) => onlineUsers.includes(user._id))
-    : users;
+  // Ensure `filteredUsers` is always an array
+  const filteredUsers = useMemo(
+    () => (Array.isArray(users) ? (showOnlineOnly ? users.filter((user) => onlineUsers.includes(user._id)) : users) : []),
+    [showOnlineOnly, users, onlineUsers]
+  );
 
   if (isUsersLoading) return <SidebarSkeleton />;
+  if (error) return <div className="text-center text-red-500 py-4">Error fetching users</div>;
 
   return (
     <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200">
@@ -52,10 +54,9 @@ const Sidebar = () => {
             <button
               key={user._id}
               onClick={() => setSelectedUser(user)}
+              aria-label={`Select ${user.fullName}`}
               className={`w-full p-3 flex items-center gap-3 hover:bg-base-300 transition-colors ${
-                selectedUser?._id === user._id
-                  ? "bg-base-300 ring-1 ring-base-300"
-                  : ""
+                selectedUser?._id === user._id ? "bg-base-300 ring-1 ring-base-300" : ""
               }`}
             >
               <div className="relative mx-auto lg:mx-0">
